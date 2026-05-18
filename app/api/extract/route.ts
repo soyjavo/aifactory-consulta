@@ -27,6 +27,8 @@ export async function POST(request: Request) {
         .from("consultations")
         .update({
           structured_data: structured,
+          original_extraction: structured,
+          edited: false,
           language_detected: structured.language_detected,
         })
         .eq("id", consultationId);

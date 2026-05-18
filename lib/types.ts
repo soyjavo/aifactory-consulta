@@ -63,6 +63,8 @@ export type ConsultationRow = {
   ended_at: string | null;
   transcript: string;
   structured_data: SoapConsultation | null;
+  original_extraction: SoapConsultation | null;
+  edited: boolean;
   language_detected: string | null;
   synced_to_companion: boolean;
   synced_at: string | null;

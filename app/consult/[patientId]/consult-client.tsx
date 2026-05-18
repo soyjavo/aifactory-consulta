@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { useT } from "@/components/i18n-provider";
@@ -27,11 +27,16 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
+function deepEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export function ConsultClient({ patient }: { patient: Patient }) {
   const { t } = useT();
   const [state, setState] = useState<RecordingState>("idle");
   const [transcript, setTranscript] = useState("");
   const [structured, setStructured] = useState<SoapConsultation | null>(null);
+  const [original, setOriginal] = useState<SoapConsultation | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -39,6 +44,11 @@ export function ConsultClient({ patient }: { patient: Patient }) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const isEdited = useMemo(
+    () => structured !== null && original !== null && !deepEqual(structured, original),
+    [structured, original],
+  );
 
   const cleanupStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
@@ -86,6 +96,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
           return;
         }
         setStructured(extractData.structured);
+        setOriginal(extractData.structured);
         setState("ready");
         toast.success(t("consultation_processed"));
       } catch (err) {
@@ -102,6 +113,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
     setErrorMessage(null);
     setTranscript("");
     setStructured(null);
+    setOriginal(null);
     setConsultationId(null);
     setState("requestingMic");
 
@@ -147,25 +159,41 @@ export function ConsultClient({ patient }: { patient: Patient }) {
   }, [cleanupStream]);
 
   const onSync = useCallback(async () => {
-    if (!consultationId) return;
+    if (!consultationId || !structured) return;
     setState("syncing");
     try {
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consultationId }),
+        body: JSON.stringify({
+          consultationId,
+          structured_data: structured,
+          edited: isEdited,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setState("synced");
-      toast.success(t("synced_toast"));
+      toast.success(t("approved_synced"));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
       setErrorMessage(message);
       toast.error(message);
       setState("ready");
     }
-  }, [consultationId, t]);
+  }, [consultationId, structured, isEdited, t]);
+
+  const onResetToOriginal = useCallback(() => {
+    if (!original) return;
+    setStructured(JSON.parse(JSON.stringify(original)));
+    toast(t("reset_done"), { duration: 1800 });
+  }, [original, t]);
+
+  const handleStructuredChange = useCallback((next: SoapConsultation) => {
+    setStructured(next);
+  }, []);
+
+  const canReset = state === "ready" && isEdited;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -193,11 +221,27 @@ export function ConsultClient({ patient }: { patient: Patient }) {
               />
             </section>
             <section className="lg:col-span-2">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {t("structured_output")}
-              </h2>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {t("structured_output")}
+                </h2>
+                {canReset && (
+                  <button
+                    type="button"
+                    onClick={onResetToOriginal}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-[var(--brand-primary)]"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {t("reset_to_ai")}
+                  </button>
+                )}
+              </div>
               <StructuredOutputPanel
                 data={structured}
+                original={original}
+                onChange={
+                  state === "ready" ? handleStructuredChange : undefined
+                }
                 isLoading={state === "processing" && !!transcript && !structured}
               />
             </section>
@@ -211,6 +255,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
             onStop={onStop}
             onSync={onSync}
             errorMessage={errorMessage}
+            approveLabel={t("approve_and_sync")}
           />
         </div>
       </main>

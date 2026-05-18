@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleDashed, ShieldCheck, Sparkles } from "lucide-react";
 import { Header } from "@/components/header";
 import { useT } from "@/components/i18n-provider";
 import { PatientContextBar } from "@/components/patient-context-bar";
@@ -70,10 +70,17 @@ export function SummaryClient({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-primary)]">
             {t("consultation_summary")}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
-            {patient?.name ?? "—"}
-          </h1>
-          <p className="text-sm text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+              {patient?.name ?? "—"}
+            </h1>
+            <ReviewBadge
+              edited={consultation.edited}
+              reviewedLabel={t("reviewed_by_doctor")}
+              aiLabel={t("ai_extraction_not_reviewed")}
+            />
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
             {formatTimestamp(consultation.started_at, locale)} ·{" "}
             {t("duration")}:{" "}
             {durationLabel(
@@ -120,6 +127,31 @@ export function SummaryClient({
         </footer>
       </main>
     </div>
+  );
+}
+
+function ReviewBadge({
+  edited,
+  reviewedLabel,
+  aiLabel,
+}: {
+  edited: boolean;
+  reviewedLabel: string;
+  aiLabel: string;
+}) {
+  if (edited) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-primary)]">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        {reviewedLabel}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+      <Sparkles className="h-3.5 w-3.5" />
+      {aiLabel}
+    </span>
   );
 }
 

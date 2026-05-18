@@ -28,6 +28,7 @@ export function RecordingControls({
   onStop,
   onSync,
   errorMessage,
+  approveLabel,
 }: {
   state: RecordingState;
   elapsed: number;
@@ -36,6 +37,7 @@ export function RecordingControls({
   onStop: () => void;
   onSync: () => void;
   errorMessage?: string | null;
+  approveLabel?: string;
 }) {
   const { t } = useT();
   const recording = state === "recording";
@@ -142,7 +144,7 @@ export function RecordingControls({
             className="bg-[var(--brand-accent)] text-slate-900 shadow-sm hover:bg-[#d68707]"
           >
             <Send className="mr-2 h-4 w-4" />
-            {t("sync_to_companion")}
+            {approveLabel ?? t("approve_and_sync")}
           </Button>
         )}
 

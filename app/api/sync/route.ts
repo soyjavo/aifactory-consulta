@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import type { SoapConsultation } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -7,7 +8,12 @@ const COMPANION_URL = "https://patient-companion.butterbase.dev";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { consultationId?: string };
+    const body = (await request.json()) as {
+      consultationId?: string;
+      structured_data?: SoapConsultation | null;
+      edited?: boolean;
+    };
+
     if (!body.consultationId) {
       return NextResponse.json(
         { error: "consultationId is required" },
@@ -15,12 +21,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const update: Record<string, unknown> = {
+      synced_to_companion: true,
+      synced_at: new Date().toISOString(),
+    };
+
+    if (typeof body.edited === "boolean") update.edited = body.edited;
+    if (body.structured_data !== undefined && body.structured_data !== null) {
+      update.structured_data = body.structured_data;
+      update.language_detected = body.structured_data.language_detected ?? null;
+    }
+
     const { error } = await getSupabase()
       .from("consultations")
-      .update({
-        synced_to_companion: true,
-        synced_at: new Date().toISOString(),
-      })
+      .update(update)
       .eq("id", body.consultationId);
 
     if (error) {
