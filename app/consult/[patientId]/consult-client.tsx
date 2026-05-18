@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, FileSignature, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { useT } from "@/components/i18n-provider";
@@ -174,9 +174,34 @@ export function ConsultClient({ patient }: { patient: Patient }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setState("synced");
-      toast.success(t("approved_synced"));
+      toast.success(t("note_signed_synced"));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
+      setErrorMessage(message);
+      toast.error(message);
+      setState("ready");
+    }
+  }, [consultationId, structured, isEdited, t]);
+
+  const onSaveDraft = useCallback(async () => {
+    if (!consultationId || !structured) return;
+    setState("savingDraft");
+    try {
+      const res = await fetch("/api/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consultationId,
+          structured_data: structured,
+          edited: isEdited,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Draft save failed");
+      toast.success(t("draft_saved"), { duration: 1800 });
+      setState("ready");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Draft save failed";
       setErrorMessage(message);
       toast.error(message);
       setState("ready");
@@ -194,18 +219,38 @@ export function ConsultClient({ patient }: { patient: Patient }) {
   }, []);
 
   const canReset = state === "ready" && isEdited;
+  const showStatusBadge = !!transcript || !!structured || state === "synced";
+  const isSigned = state === "synced";
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[var(--brand-primary)]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("back_home")}
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[var(--brand-primary)]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("back_home")}
+          </Link>
+          {showStatusBadge && (
+            <span
+              className={
+                isSigned
+                  ? "inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800"
+                  : "inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-800"
+              }
+            >
+              {isSigned ? (
+                <FileSignature className="h-3 w-3" />
+              ) : (
+                <FileText className="h-3 w-3" />
+              )}
+              {isSigned ? t("signed") : t("draft")}
+            </span>
+          )}
+        </div>
 
         <div className="mt-6 space-y-6">
           <PatientContextBar patient={patient} />
@@ -240,7 +285,9 @@ export function ConsultClient({ patient }: { patient: Patient }) {
                 data={structured}
                 original={original}
                 onChange={
-                  state === "ready" ? handleStructuredChange : undefined
+                  state === "ready" || state === "savingDraft"
+                    ? handleStructuredChange
+                    : undefined
                 }
                 isLoading={state === "processing" && !!transcript && !structured}
               />
@@ -254,8 +301,8 @@ export function ConsultClient({ patient }: { patient: Patient }) {
             onStart={onStart}
             onStop={onStop}
             onSync={onSync}
+            onSaveDraft={onSaveDraft}
             errorMessage={errorMessage}
-            approveLabel={t("approve_and_sync")}
           />
         </div>
       </main>

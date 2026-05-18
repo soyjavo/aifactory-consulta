@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Mic, Send, Square } from "lucide-react";
+import {
+  CheckCircle2,
+  FileSignature,
+  Loader2,
+  Mic,
+  Save,
+  Square,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/components/i18n-provider";
 
@@ -11,6 +18,7 @@ export type RecordingState =
   | "recording"
   | "processing"
   | "ready"
+  | "savingDraft"
   | "syncing"
   | "synced";
 
@@ -27,8 +35,8 @@ export function RecordingControls({
   onStart,
   onStop,
   onSync,
+  onSaveDraft,
   errorMessage,
-  approveLabel,
 }: {
   state: RecordingState;
   elapsed: number;
@@ -36,21 +44,22 @@ export function RecordingControls({
   onStart: () => void;
   onStop: () => void;
   onSync: () => void;
+  onSaveDraft?: () => void;
   errorMessage?: string | null;
-  approveLabel?: string;
 }) {
   const { t } = useT();
   const recording = state === "recording";
   const processing = state === "processing" || state === "requestingMic";
   const synced = state === "synced";
   const syncing = state === "syncing";
+  const savingDraft = state === "savingDraft";
 
   if (synced) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50/90 p-4 backdrop-blur">
         <div className="flex items-center gap-2 text-emerald-800">
           <CheckCircle2 className="h-5 w-5" />
-          <span className="text-sm font-semibold">{t("synced_to_companion")}</span>
+          <span className="text-sm font-semibold">{t("note_signed_synced")}</span>
         </div>
         <a
           href="https://patient-companion.butterbase.dev"
@@ -69,6 +78,7 @@ export function RecordingControls({
     if (state === "requestingMic") return t("requesting_mic");
     if (state === "recording") return t("recording");
     if (state === "processing") return t("processing");
+    if (state === "savingDraft") return t("saving_draft");
     if (state === "ready") return t("ready_to_sync");
     if (state === "syncing") return t("syncing");
     return "";
@@ -137,19 +147,38 @@ export function RecordingControls({
           </Button>
         )}
 
-        {state === "ready" && hasResult && (
-          <Button
-            size="lg"
-            onClick={onSync}
-            className="bg-[var(--brand-accent)] text-slate-900 shadow-sm hover:bg-[#d68707]"
-          >
-            <Send className="mr-2 h-4 w-4" />
-            {approveLabel ?? t("approve_and_sync")}
-          </Button>
+        {(state === "ready" || savingDraft) && hasResult && (
+          <>
+            {onSaveDraft && (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={onSaveDraft}
+                disabled={savingDraft}
+                className="border-[var(--brand-primary)]/40 bg-transparent text-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/5"
+              >
+                {savingDraft ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                {t("save_draft")}
+              </Button>
+            )}
+            <Button
+              size="lg"
+              onClick={onSync}
+              disabled={savingDraft}
+              className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+            >
+              <FileSignature className="mr-2 h-4 w-4" />
+              {t("sign_note")}
+            </Button>
+          </>
         )}
 
         {syncing && (
-          <Button size="lg" disabled className="bg-slate-300 text-white">
+          <Button size="lg" disabled className="bg-emerald-300 text-white">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             {t("syncing")}
           </Button>

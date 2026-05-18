@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, CircleDashed, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CircleDashed,
+  FileSignature,
+  FileText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { Header } from "@/components/header";
 import { useT } from "@/components/i18n-provider";
 import { PatientContextBar } from "@/components/patient-context-bar";
@@ -74,8 +82,11 @@ export function SummaryClient({
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
               {patient?.name ?? "—"}
             </h1>
-            <ReviewBadge
+            <NoteStatusBadge
+              signed={consultation.signed}
               edited={consultation.edited}
+              signedLabel={t("signed")}
+              draftLabel={t("draft")}
               reviewedLabel={t("reviewed_by_doctor")}
               aiLabel={t("ai_extraction_not_reviewed")}
             />
@@ -130,20 +141,52 @@ export function SummaryClient({
   );
 }
 
-function ReviewBadge({
+function NoteStatusBadge({
+  signed,
   edited,
+  signedLabel,
+  draftLabel,
   reviewedLabel,
   aiLabel,
 }: {
+  signed: boolean;
   edited: boolean;
+  signedLabel: string;
+  draftLabel: string;
   reviewedLabel: string;
   aiLabel: string;
 }) {
+  if (signed) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+        <FileSignature className="h-3.5 w-3.5" />
+        <span className="font-bold uppercase tracking-[0.14em]">{signedLabel}</span>
+        <span className="text-emerald-700">·</span>
+        {edited ? (
+          <span className="inline-flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3" />
+            {reviewedLabel}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1">
+            <Sparkles className="h-3 w-3" />
+            {aiLabel}
+          </span>
+        )}
+      </span>
+    );
+  }
+  // Not signed
   if (edited) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-primary)]">
-        <ShieldCheck className="h-3.5 w-3.5" />
-        {reviewedLabel}
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+        <FileText className="h-3.5 w-3.5" />
+        <span className="font-bold uppercase tracking-[0.14em]">{draftLabel}</span>
+        <span className="text-amber-700">·</span>
+        <span className="inline-flex items-center gap-1">
+          <ShieldCheck className="h-3 w-3" />
+          {reviewedLabel}
+        </span>
       </span>
     );
   }

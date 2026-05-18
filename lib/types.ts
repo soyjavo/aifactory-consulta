@@ -68,4 +68,6 @@ export type ConsultationRow = {
   language_detected: string | null;
   synced_to_companion: boolean;
   synced_at: string | null;
+  signed: boolean;
+  signed_at: string | null;
 };

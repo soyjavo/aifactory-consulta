@@ -4,8 +4,6 @@ import type { SoapConsultation } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const COMPANION_URL = "https://patient-companion.butterbase.dev";
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -21,18 +19,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const now = new Date().toISOString();
-    const update: Record<string, unknown> = {
-      synced_to_companion: true,
-      synced_at: now,
-      signed: true,
-      signed_at: now,
-    };
+    const update: Record<string, unknown> = {};
 
-    if (typeof body.edited === "boolean") update.edited = body.edited;
     if (body.structured_data !== undefined && body.structured_data !== null) {
       update.structured_data = body.structured_data;
       update.language_detected = body.structured_data.language_detected ?? null;
+    }
+    if (typeof body.edited === "boolean") update.edited = body.edited;
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ success: true, noop: true });
     }
 
     const { error } = await getSupabase()
@@ -41,14 +37,14 @@ export async function POST(request: Request) {
       .eq("id", body.consultationId);
 
     if (error) {
-      console.error("[sync] update failed", error);
+      console.error("[draft] update failed", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, companionUrl: COMPANION_URL });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "sync failed";
-    console.error("[sync]", err);
+    const message = err instanceof Error ? err.message : "draft save failed";
+    console.error("[draft]", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
