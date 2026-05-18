@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import type { StructuredConsultation } from "./types";
+import type { SoapConsultation } from "./types";
 
 const MODEL = "gemini-2.5-flash";
 
@@ -48,29 +48,63 @@ export async function transcribeAudio(
   return text.trim();
 }
 
+const SOAP_PROMPT = `You are a professional medical scribe analyzing a specialty clinic consultation transcript. This is a bidirectional conversation between a patient and a doctor. Extract information in standard SOAP medical format.
+
+Return ONLY valid JSON matching this exact schema:
+
+{
+  subjetivo: {
+    motivo_consulta: string,
+    sintomas: string[],
+    sintomas_adicionales: string | null
+  },
+  objetivo: {
+    signos_vitales: {
+      ta: string | null,
+      fc: number | null,
+      fr: number | null,
+      temp: number | null,
+      sato2: number | null,
+      peso: number | null,
+      talla: number | null,
+      imc: number | null
+    },
+    exploracion_fisica: string | null
+  },
+  analisis: {
+    diagnostico: string,
+    cie10: string[]
+  },
+  plan: {
+    tratamiento_general: string | null,
+    recetas: [{medicamento, dosis, frecuencia, duracion}],
+    estudios_solicitados: string[],
+    referencias: string[],
+    seguimiento: string | null,
+    proximos_pasos: string | null,
+    notas_adicionales: string | null
+  },
+  language_detected: 'es' | 'en' | 'mixed'
+}
+
+Rules:
+- If a field is not mentioned in the transcript, use null for strings, [] for arrays, null for numbers. DO NOT invent data.
+- For prescriptions, parse carefully: 'one drop every 4 hours for 7 days' → {medicamento: 'eye drops', dosis: 'one drop', frecuencia: 'every 4 hours', duracion: '7 days'}
+- Calculate BMI if weight and height are mentioned: peso / (talla_m)²
+- Preserve the language of the conversation in all string values — if doctor speaks English, output values in English; if Spanish, output in Spanish
+- ICD-10 codes only if explicitly stated
+
+Transcript:
+`;
+
 export async function extractStructured(
   transcript: string,
-): Promise<StructuredConsultation> {
+): Promise<SoapConsultation> {
   const client = getClient();
-
-  const prompt = [
-    "You are a medical scribe extracting structured data from a specialty clinic consultation transcript. Return ONLY valid JSON matching this schema:",
-    "{",
-    "  chief_complaint: string (1-2 sentences),",
-    "  diagnosis: string (or 'Pendiente' if unclear),",
-    "  treatment_plan: string (or 'No especificado' if none),",
-    "  medications: [{ name, dose, frequency, duration }],",
-    "  follow_up_items: string[],",
-    "  language_detected: 'es' | 'en' | 'mixed'",
-    "}",
-    "If a field is not mentioned in the transcript, use reasonable defaults: empty array for lists, 'No especificado' for strings.",
-    "Transcript:",
-    transcript,
-  ].join("\n");
 
   const response = await client.models.generateContent({
     model: MODEL,
-    contents: prompt,
+    contents: SOAP_PROMPT + transcript,
     config: {
       responseMimeType: "application/json",
     },
@@ -78,5 +112,5 @@ export async function extractStructured(
 
   const text = response.text;
   if (!text) throw new Error("Gemini returned empty extraction.");
-  return JSON.parse(text) as StructuredConsultation;
+  return JSON.parse(text) as SoapConsultation;
 }

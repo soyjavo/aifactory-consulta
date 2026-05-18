@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
+import { useT } from "@/components/i18n-provider";
 import { PatientContextBar } from "@/components/patient-context-bar";
 import { TranscriptPanel } from "@/components/transcript-panel";
 import { StructuredOutputPanel } from "@/components/structured-output-panel";
@@ -13,7 +14,7 @@ import {
   type RecordingState,
   useRecordingTimer,
 } from "@/components/recording-controls";
-import type { Patient, StructuredConsultation } from "@/lib/types";
+import type { Patient, SoapConsultation } from "@/lib/types";
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = await blob.arrayBuffer();
@@ -27,9 +28,10 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export function ConsultClient({ patient }: { patient: Patient }) {
+  const { t } = useT();
   const [state, setState] = useState<RecordingState>("idle");
   const [transcript, setTranscript] = useState("");
-  const [structured, setStructured] = useState<StructuredConsultation | null>(null);
+  const [structured, setStructured] = useState<SoapConsultation | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
   const streamRef = useRef<MediaStream | null>(null);
 
   const cleanupStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((tr) => tr.stop());
     streamRef.current = null;
   }, []);
 
@@ -63,7 +65,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
         });
         const transcribeData = await transcribeRes.json();
         if (!transcribeRes.ok) {
-          throw new Error(transcribeData.error ?? "Transcripción falló");
+          throw new Error(transcribeData.error ?? "Transcription failed");
         }
         setTranscript(transcribeData.transcript);
         setConsultationId(transcribeData.consultationId);
@@ -78,23 +80,22 @@ export function ConsultClient({ patient }: { patient: Patient }) {
         });
         const extractData = await extractRes.json();
         if (!extractRes.ok) {
-          // We still have the transcript — surface error but keep transcript visible.
-          toast.error("La extracción estructurada falló. La transcripción está disponible.");
-          setErrorMessage(extractData.error ?? "Extracción falló");
+          toast.error(t("extraction_failed"));
+          setErrorMessage(extractData.error ?? "Extraction failed");
           setState("ready");
           return;
         }
         setStructured(extractData.structured);
         setState("ready");
-        toast.success("Consulta procesada");
+        toast.success(t("consultation_processed"));
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Error procesando audio";
+        const message = err instanceof Error ? err.message : "Error";
         setErrorMessage(message);
         toast.error(message);
         setState("idle");
       }
     },
-    [patient.id],
+    [patient.id, t],
   );
 
   const onStart = useCallback(async () => {
@@ -128,14 +129,12 @@ export function ConsultClient({ patient }: { patient: Patient }) {
     } catch (err) {
       cleanupStream();
       const message =
-        err instanceof Error
-          ? err.message
-          : "No se pudo acceder al micrófono.";
-      setErrorMessage(`Micrófono no disponible: ${message}`);
-      toast.error("Permiso de micrófono denegado");
+        err instanceof Error ? err.message : "Microphone unavailable";
+      setErrorMessage(`${t("mic_denied_title")}: ${message}`);
+      toast.error(t("mic_denied_title"));
       setState("idle");
     }
-  }, [cleanupStream, processRecording]);
+  }, [cleanupStream, processRecording, t]);
 
   const onStop = useCallback(() => {
     const recorder = recorderRef.current;
@@ -157,26 +156,16 @@ export function ConsultClient({ patient }: { patient: Patient }) {
         body: JSON.stringify({ consultationId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Sync falló");
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setState("synced");
-      toast.success("Sincronizado con Patient Companion");
+      toast.success(t("synced_toast"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Sync falló";
+      const message = err instanceof Error ? err.message : "Sync failed";
       setErrorMessage(message);
       toast.error(message);
       setState("ready");
     }
-  }, [consultationId]);
-
-  const transcriptPlaceholder =
-    state === "idle" && !transcript
-      ? "Presiona Iniciar para grabar la consulta."
-      : "Esperando transcripción…";
-
-  const structuredPlaceholder =
-    !transcript
-      ? "Esperando que la consulta inicie…"
-      : "Esperando extracción estructurada…";
+  }, [consultationId, t]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -187,7 +176,7 @@ export function ConsultClient({ patient }: { patient: Patient }) {
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[var(--brand-primary)]"
         >
           <ArrowLeft className="h-4 w-4" />
-          Volver al inicio
+          {t("back_home")}
         </Link>
 
         <div className="mt-6 space-y-6">
@@ -196,21 +185,19 @@ export function ConsultClient({ patient }: { patient: Patient }) {
           <div className="grid gap-6 lg:grid-cols-5">
             <section className="lg:col-span-3">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Transcripción
+                {t("transcript")}
               </h2>
               <TranscriptPanel
                 transcript={transcript}
-                placeholder={transcriptPlaceholder}
                 isLoading={state === "processing" && !transcript}
               />
             </section>
             <section className="lg:col-span-2">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Datos estructurados
+                {t("structured_output")}
               </h2>
               <StructuredOutputPanel
                 data={structured}
-                placeholder={structuredPlaceholder}
                 isLoading={state === "processing" && !!transcript && !structured}
               />
             </section>

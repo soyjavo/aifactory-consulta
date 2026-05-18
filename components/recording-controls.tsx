@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mic, Send, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/components/i18n-provider";
 
 export type RecordingState =
   | "idle"
@@ -36,6 +37,7 @@ export function RecordingControls({
   onSync: () => void;
   errorMessage?: string | null;
 }) {
+  const { t } = useT();
   const recording = state === "recording";
   const processing = state === "processing" || state === "requestingMic";
   const synced = state === "synced";
@@ -46,7 +48,7 @@ export function RecordingControls({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 backdrop-blur">
         <div className="flex items-center gap-2 text-emerald-800">
           <CheckCircle2 className="h-5 w-5" />
-          <span className="text-sm font-semibold">Consulta sincronizada con Patient Companion</span>
+          <span className="text-sm font-semibold">{t("synced_to_companion")}</span>
         </div>
         <a
           href="https://patient-companion.butterbase.dev"
@@ -54,11 +56,21 @@ export function RecordingControls({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-primary)] hover:underline"
         >
-          Abrir Patient Companion ↗
+          {t("view_in_companion")}
         </a>
       </div>
     );
   }
+
+  const statusLabel = (() => {
+    if (state === "idle" && !hasResult) return t("ready_to_record");
+    if (state === "requestingMic") return t("requesting_mic");
+    if (state === "recording") return t("recording");
+    if (state === "processing") return t("processing");
+    if (state === "ready") return t("ready_to_sync");
+    if (state === "syncing") return t("syncing");
+    return "";
+  })();
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[color:var(--border)] bg-white/85 p-4 backdrop-blur">
@@ -74,12 +86,7 @@ export function RecordingControls({
         </span>
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-            {state === "idle" && !hasResult && "Listo para grabar"}
-            {state === "requestingMic" && "Solicitando micrófono…"}
-            {state === "recording" && "Grabando consulta"}
-            {state === "processing" && "Procesando con Gemini"}
-            {state === "ready" && "Listo para sincronizar"}
-            {state === "syncing" && "Sincronizando…"}
+            {statusLabel}
           </p>
           <p className="font-mono text-2xl font-semibold tabular-nums text-slate-900">
             {formatTimer(elapsed)}
@@ -99,14 +106,14 @@ export function RecordingControls({
             className="bg-[var(--brand-primary)] text-white shadow-sm hover:bg-[#0b5d57]"
           >
             <Mic className="mr-2 h-4 w-4" />
-            Iniciar Consulta
+            {t("start_consultation")}
           </Button>
         )}
 
         {state === "requestingMic" && (
           <Button size="lg" disabled className="bg-slate-300 text-white">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Esperando permiso…
+            {t("requesting_mic")}
           </Button>
         )}
 
@@ -117,14 +124,14 @@ export function RecordingControls({
             className="bg-rose-600 text-white shadow-sm hover:bg-rose-700"
           >
             <Square className="mr-2 h-4 w-4" />
-            Detener
+            {t("stop")}
           </Button>
         )}
 
         {state === "processing" && (
           <Button size="lg" disabled className="bg-slate-300 text-white">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Procesando…
+            {t("processing")}
           </Button>
         )}
 
@@ -135,14 +142,14 @@ export function RecordingControls({
             className="bg-[var(--brand-accent)] text-slate-900 shadow-sm hover:bg-[#d68707]"
           >
             <Send className="mr-2 h-4 w-4" />
-            Sync to Patient Companion
+            {t("sync_to_companion")}
           </Button>
         )}
 
         {syncing && (
           <Button size="lg" disabled className="bg-slate-300 text-white">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Sincronizando…
+            {t("syncing")}
           </Button>
         )}
       </div>

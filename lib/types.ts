@@ -11,20 +11,48 @@ export type Patient = {
   created_at?: string;
 };
 
-export type StructuredConsultation = {
-  chief_complaint: string;
-  diagnosis: string;
-  treatment_plan: string;
-  medications: Medication[];
-  follow_up_items: string[];
-  language_detected: "es" | "en" | "mixed";
+export type VitalSigns = {
+  ta: string | null;
+  fc: number | null;
+  fr: number | null;
+  temp: number | null;
+  sato2: number | null;
+  peso: number | null;
+  talla: number | null;
+  imc: number | null;
 };
 
-export type Medication = {
-  name: string;
-  dose: string | null;
-  frequency: string | null;
-  duration: string | null;
+export type Receta = {
+  medicamento: string;
+  dosis: string | null;
+  frecuencia: string | null;
+  duracion: string | null;
+};
+
+export type SoapConsultation = {
+  subjetivo: {
+    motivo_consulta: string | null;
+    sintomas: string[];
+    sintomas_adicionales: string | null;
+  };
+  objetivo: {
+    signos_vitales: VitalSigns;
+    exploracion_fisica: string | null;
+  };
+  analisis: {
+    diagnostico: string | null;
+    cie10: string[];
+  };
+  plan: {
+    tratamiento_general: string | null;
+    recetas: Receta[];
+    estudios_solicitados: string[];
+    referencias: string[];
+    seguimiento: string | null;
+    proximos_pasos: string | null;
+    notas_adicionales: string | null;
+  };
+  language_detected: "es" | "en" | "mixed";
 };
 
 export type ConsultationRow = {
@@ -34,7 +62,7 @@ export type ConsultationRow = {
   started_at: string;
   ended_at: string | null;
   transcript: string;
-  structured_data: StructuredConsultation | null;
+  structured_data: SoapConsultation | null;
   language_detected: string | null;
   synced_to_companion: boolean;
   synced_at: string | null;
