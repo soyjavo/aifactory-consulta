@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, User } from "lucide-react";
+import { ArrowRight, AlertTriangle, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Patient } from "@/lib/types";
 
+function truncate(text: string | null, max = 110): string {
+  if (!text) return "Sin antecedentes registrados.";
+  return text.length > max ? `${text.slice(0, max).trim()}…` : text;
+}
+
 export function PatientCard({ patient }: { patient: Patient }) {
-  const sexLabel = patient.sex === "F" ? "Femenino" : patient.sex === "M" ? "Masculino" : "Otro";
+  const sexLabel =
+    patient.sex === "F" ? "Femenino" : patient.sex === "M" ? "Masculino" : "Otro";
 
   return (
     <Card className="group relative overflow-hidden border-[color:var(--border)] bg-white/85 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_36px_-24px_rgba(15,118,110,0.35)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_1px_0_rgba(15,23,42,0.05),0_24px_48px_-28px_rgba(15,118,110,0.45)]">
@@ -36,15 +42,23 @@ export function PatientCard({ patient }: { patient: Patient }) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
-            Condición principal
+            Antecedentes
           </p>
-          <p className="mt-1 text-base font-medium text-slate-800">
-            {patient.primaryCondition}
+          <p className="mt-1 text-sm leading-relaxed text-slate-700">
+            {truncate(patient.medical_history)}
           </p>
         </div>
+        {patient.allergies && patient.allergies.toLowerCase() !== "ninguna conocida" && (
+          <p className="flex items-start gap-1.5 text-xs text-rose-700">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="font-semibold">Alergias:</span> {patient.allergies}
+            </span>
+          </p>
+        )}
         <Link
           href={`/consult/${patient.id}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-primary)] transition group-hover:gap-2.5"

@@ -4,16 +4,20 @@ export type Patient = {
   id: string;
   name: string;
   age: number;
-  sex: Sex;
-  primaryCondition: string;
+  sex: Sex | string;
+  language: string | null;
+  medical_history: string | null;
+  allergies: string | null;
+  created_at?: string;
 };
 
 export type StructuredConsultation = {
-  chiefComplaint: string | null;
-  diagnosis: string | null;
-  treatmentPlan: string[];
+  chief_complaint: string;
+  diagnosis: string;
+  treatment_plan: string;
   medications: Medication[];
-  followUp: string[];
+  follow_up_items: string[];
+  language_detected: "es" | "en" | "mixed";
 };
 
 export type Medication = {
@@ -23,37 +27,15 @@ export type Medication = {
   duration: string | null;
 };
 
-export type ConsultationRecord = {
+export type ConsultationRow = {
   id: string;
-  patientId: string;
-  doctorId: string | null;
-  startedAt: string;
-  endedAt: string | null;
-  language: "es" | "en" | "mixed";
+  patient_id: string;
+  doctor_name: string | null;
+  started_at: string;
+  ended_at: string | null;
   transcript: string;
-  structured: StructuredConsultation | null;
+  structured_data: StructuredConsultation | null;
+  language_detected: string | null;
+  synced_to_companion: boolean;
+  synced_at: string | null;
 };
-
-export const DEMO_PATIENTS: Patient[] = [
-  {
-    id: "maria-gonzalez",
-    name: "María González",
-    age: 34,
-    sex: "F",
-    primaryCondition: "Hipertensión",
-  },
-  {
-    id: "carlos-ramirez",
-    name: "Carlos Ramírez",
-    age: 58,
-    sex: "M",
-    primaryCondition: "Diabetes tipo 2",
-  },
-  {
-    id: "ana-patricia-lopez",
-    name: "Ana Patricia López",
-    age: 42,
-    sex: "F",
-    primaryCondition: "Migraña crónica",
-  },
-];

@@ -1,7 +1,22 @@
 import { Activity, Languages, Sparkles } from "lucide-react";
 import { Header } from "@/components/header";
 import { PatientCard } from "@/components/patient-card";
-import { DEMO_PATIENTS } from "@/lib/types";
+import { getSupabase } from "@/lib/supabase";
+import type { Patient } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+
+async function loadPatients(): Promise<Patient[]> {
+  const { data, error } = await getSupabase()
+    .from("patients")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) {
+    console.error("loadPatients error", error);
+    return [];
+  }
+  return (data ?? []) as Patient[];
+}
 
 const FEATURES = [
   {
@@ -24,7 +39,9 @@ const FEATURES = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const patients = await loadPatients();
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -82,15 +99,21 @@ export default function Home() {
               </p>
             </div>
             <span className="hidden text-xs uppercase tracking-[0.18em] text-slate-400 sm:block">
-              3 pacientes agendados
+              {patients.length} {patients.length === 1 ? "paciente agendado" : "pacientes agendados"}
             </span>
           </div>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {DEMO_PATIENTS.map((patient) => (
-              <PatientCard key={patient.id} patient={patient} />
-            ))}
-          </div>
+          {patients.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-[color:var(--border)] bg-white/60 p-10 text-center text-sm text-slate-500">
+              No hay pacientes agendados todavía. Verifica la conexión con Supabase.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {patients.map((patient) => (
+                <PatientCard key={patient.id} patient={patient} />
+              ))}
+            </div>
+          )}
         </section>
       </main>
 
